@@ -69,7 +69,7 @@ final class RingInteractionView: NSView {
 
     private func updateCursor() {
         guard let model else { return }
-        (model.hovered != nil || model.hoveringCenter ? NSCursor.pointingHand : NSCursor.arrow).set()
+        (model.hovered != nil || model.hoveredSmaller != nil || model.hoveringCenter ? NSCursor.pointingHand : NSCursor.arrow).set()
     }
 
     // MARK: Hover

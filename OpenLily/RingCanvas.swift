@@ -52,6 +52,8 @@ struct RenderState {
     let growing: Bool
     let compost: Set<ObjectIdentifier>
     let hovered: FileNode?
+    /// Folder whose "smaller items" petal is under the pointer.
+    let hoveredSmaller: FileNode?
     let hoveringCenter: Bool
     let mode: ColorMode
     let search: SearchResult?
@@ -187,7 +189,7 @@ final class RingRenderer {
 
             var tipFactor = node.hasChildren ? 1 - Ring.alpha(d + 1, scale: scale) : 1
             if node.hasChildren, let first = node.children.first, eff(node) > 0,
-               span * eff(first) / eff(node) * Ring.outer(d + 1, scale: vp.scale) * k < 0.7 {
+               Ring.isThin(span: span * eff(first) / eff(node), depth: d + 1, k: k) {
                 tipFactor = 1
             }
             let tip = Ring.tip(ro: ro, span: span, depth: d) * tipFactor
@@ -219,15 +221,17 @@ final class RingRenderer {
         let total = eff(node)
         guard total > 0 else { return }
         let width = x1 - x0
-        let childRo = Ring.outer(max(0.02, dChild), scale: vp.scale)
         var x = x0
         for (i, child) in node.children.enumerated() {
             let cw = width * eff(child) / total
             guard cw > 0 else { continue }
             let ca0 = angle(x), ca1 = angle(x + cw)
-            if dChild > 0.02, ca1 > ca0, (ca1 - ca0) * childRo * k < 0.7 {
-                // Everything from here on is smaller still: draw it as one quiet "smaller items" slice.
-                drawSmaller(from: ca0, to: angle(x1), depth: dChild, dim: !(shown && s.search == nil), ctx: &ctx)
+            if dChild > 0.02, ca1 > ca0, Ring.isThin(span: ca1 - ca0, depth: dChild, k: k) {
+                // Everything from here on is thinner still. If nothing in this folder is wide enough,
+                // the folder just ends in a petal; otherwise the rest share one "smaller items" petal.
+                if i > 0 {
+                    drawSmaller(node, count: node.children.count - i, from: ca0, to: angle(x1), depth: dChild, dim: !(shown && s.search == nil), ctx: &ctx)
+                }
                 break
             }
             var next = bases
@@ -247,12 +251,25 @@ final class RingRenderer {
         return source.mix(target, ft)
     }
 
-    private func drawSmaller(from a0: Double, to a1: Double, depth d: Double, dim: Bool, ctx: inout GraphicsContext) {
+    /// One soft petal standing in for all the slices too thin to draw on their own.
+    private func drawSmaller(_ parent: FileNode, count: Int, from a0: Double, to a1: Double, depth d: Double, dim: Bool, ctx: inout GraphicsContext) {
+        let span = a1 - a0
+        guard span > 0, !Ring.isThin(span: span, depth: d, k: k) else { return }
         let ri = Ring.inner(d), ro = Ring.outer(d, scale: vp.scale)
-        guard a1 > a0, (a1 - a0) * ro * k >= 1.2, Ring.box(ri, ro, a0, a1).intersects(world) else { return }
-        let path = Ring.segment(center: vp.center, k: k, ri: ri, ro: ro, a0: a0, a1: a1, tip: 0)
+        guard Ring.box(ri, Ring.reach, a0, a1).intersects(world) else { return }
+        let path = Ring.segment(center: vp.center, k: k, ri: ri, ro: ro, a0: a0, a1: a1, tip: Ring.tip(ro: ro, span: span, depth: d))
         let alpha = Ring.alpha(d, scale: vp.scale) * (dim ? 0.3 : 1)
         ctx.fill(path, with: .color(Theme.smaller.opacity(alpha)))
+        ctx.stroke(path, with: .color(Theme.inkSoft.opacity(0.35 * alpha)), style: StrokeStyle(lineWidth: 1, lineJoin: .round, dash: [2, 3]))
+        if parent === s.hoveredSmaller { hoverPath = path }
+
+        let mid = (ri + ro) / 2
+        guard span * mid * k >= 26, (ro - ri) * k >= 18, alpha > 0.6 else { return }
+        let p = vp.screen(Ring.point(mid, (a0 + a1) / 2))
+        ctx.draw(
+            Text("+\(count.formatted())").font(.system(size: 10.5, weight: .semibold)).foregroundStyle(Theme.inkSoft.opacity(alpha)),
+            at: p, anchor: .center
+        )
     }
 
     private func innerLabel(_ node: FileNode, ri: Double, ro: Double, a0: Double, a1: Double, alpha: Double, ctx: inout GraphicsContext) {

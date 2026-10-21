@@ -75,6 +75,7 @@ struct RingStage: View {
             growing: model.growing,
             compost: model.compostIDs,
             hovered: model.hovered,
+            hoveredSmaller: model.hoveredSmaller?.parent,
             hoveringCenter: model.hoveringCenter,
             mode: model.colorMode,
             search: model.search,
@@ -184,24 +185,24 @@ private struct HoverCallout: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        if let node = model.hovered, model.drag == nil, let anchor = model.calloutAnchor {
+        if model.drag == nil, let anchor = model.calloutAnchor, let content {
             let size = model.ringSize
             let x = min(max(anchor.x + 150, 140), size.width - 140)
             let y = min(max(anchor.y - 70, 90), size.height - 90)
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
                     PetalShape()
-                        .fill(model.isComposted(node) ? Theme.wilt : model.swatch(for: node).color)
+                        .fill(content.petal)
                         .frame(width: 10, height: 13)
-                    Text(node.displayName)
+                    Text(content.title)
                         .font(.system(size: 14, weight: .semibold))
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
-                Text(Bytes.string(node.size))
+                Text(Bytes.string(content.bytes))
                     .font(.serif(28))
                     .tracking(-0.5)
-                Text(model.detail(for: node))
+                Text(content.detail)
                     .font(.system(size: 12))
                     .foregroundStyle(Theme.inkSoft)
                     .lineSpacing(2)
@@ -218,6 +219,18 @@ private struct HoverCallout: View {
             .allowsHitTesting(false)
             .transition(.opacity.combined(with: .scale(scale: 0.96)))
         }
+    }
+
+    private var content: (title: String, bytes: Int64, detail: String, petal: Color)? {
+        if let node = model.hovered {
+            let petal = model.isComposted(node) ? Theme.wilt : model.swatch(for: node).color
+            return (node.displayName, node.size, model.detail(for: node), petal)
+        }
+        if let group = model.hoveredSmaller {
+            let action = group.parent === model.focus ? "Click to zoom in on them." : "Click to open \(group.parent.displayName)."
+            return ("\(group.count.formatted()) smaller items", group.bytes, "Too thin to draw one by one.\n\(action)", Theme.smaller)
+        }
+        return nil
     }
 }
 

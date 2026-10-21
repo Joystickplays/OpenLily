@@ -39,6 +39,14 @@ nonisolated enum Ring {
         min(1, max(0, visibleDepth(scale) - d + 1))
     }
 
+    /// Narrowest slice drawn on its own, in points along the ring's inner edge.
+    /// Anything thinner is folded into one "smaller items" petal at the end of its folder.
+    static let minSlice = 6.0
+
+    static func isThin(span: Double, depth d: Double, k: Double) -> Bool {
+        span * inner(max(1, d)) * k < minSlice
+    }
+
     static func tip(ro: Double, span: Double, depth d: Double) -> Double {
         guard span < .pi * 0.9 else { return 0 }
         return max(6, min(78 * pow(falloff, max(0, d - 3)), ro * span * 0.85))

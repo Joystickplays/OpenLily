@@ -59,10 +59,30 @@ struct Particle {
     let life: Double
 }
 
+/// The tail of a folder's children that are too thin to draw, shown as one petal.
+struct SmallerGroup: Equatable {
+    let parent: FileNode
+    let first: Int
+    let count: Int
+    let bytes: Int64
+
+    init(parent: FileNode, first: Int) {
+        self.parent = parent
+        self.first = first
+        count = parent.children.count - first
+        bytes = parent.children[first...].reduce(0) { $0 + $1.size }
+    }
+
+    static func == (a: SmallerGroup, b: SmallerGroup) -> Bool {
+        a.parent === b.parent && a.first == b.first
+    }
+}
+
 enum Hit {
     case none
     case center
     case node(FileNode)
+    case smaller(SmallerGroup)
 }
 
 private struct TrashRecord {
@@ -108,12 +128,15 @@ final class AppModel {
 
     // MARK: Hover
     var hovered: FileNode?
+    var hoveredSmaller: SmallerGroup?
     var hoveringCenter = false
     var calloutAnchor: CGPoint?
 
     // MARK: In view
     var inView: [FileNode] = []
     var inViewAnchor: FileNode?
+    /// What's folded into the "smaller items" petal of the listed folder, if anything.
+    var inViewRest: SmallerGroup?
 
     // MARK: Compost
     var compost: [FileNode] = []
@@ -310,10 +333,21 @@ final class AppModel {
         while true {
             let total = Double(node.size)
             guard total > 0, !node.children.isEmpty else { return .none }
+            let depth = Double(d)
+            let ri = Ring.inner(depth), ro = Ring.outer(depth, scale: camera.scale)
+            guard Ring.alpha(depth, scale: camera.scale) >= 0.4 else { return .none }
+
             var acc = 0.0
             var hit: (FileNode, Double, Double)?
-            for child in node.children {
+            for (i, child) in node.children.enumerated() {
                 let f = Double(child.size) / total
+                if Ring.isThin(span: (a1 - a0) * f, depth: depth, k: vp.k) {
+                    // This child and everything after it share the "smaller items" petal.
+                    let rest = (a1 - a0) * (1 - acc)
+                    guard i > 0, frac >= acc, !Ring.isThin(span: rest, depth: depth, k: vp.k),
+                          r >= ri - Ring.gap, r <= ro + Ring.tip(ro: ro, span: rest, depth: depth) else { return .none }
+                    return .smaller(SmallerGroup(parent: node, first: i))
+                }
                 if frac < acc + f {
                     hit = (child, acc, f)
                     break
@@ -323,13 +357,12 @@ final class AppModel {
             guard let (child, start, f) = hit, f > 0 else { return .none }
             let ca0 = a0 + (a1 - a0) * start
             let ca1 = ca0 + (a1 - a0) * f
-            let depth = Double(d)
-            let ri = Ring.inner(depth), ro = Ring.outer(depth, scale: camera.scale)
-            guard Ring.alpha(depth, scale: camera.scale) >= 0.4, (ca1 - ca0) * ro * vp.k >= 0.7 else { return .none }
             if r < ri - Ring.gap { return .none }
             if r <= ro + Ring.gap / 2 { return .node(child) }
 
-            let deeper = child.hasChildren && Ring.alpha(depth + 1, scale: camera.scale) >= 0.4
+            let deeper = child.hasChildren
+                && Ring.alpha(depth + 1, scale: camera.scale) >= 0.4
+                && !Ring.isThin(span: (ca1 - ca0) * Double(child.children[0].size) / Double(max(1, child.size)), depth: depth + 1, k: vp.k)
             if deeper {
                 node = child
                 frac = (frac - start) / f
@@ -396,18 +429,23 @@ final class AppModel {
         var a0 = 0.0, a1 = 2 * Double.pi
         var d = 1
         var visible: [FileNode] = []
+        var rest: SmallerGroup?
         let outerEdge = Ring.outer(Ring.visibleDepth(scale)) + 80
 
         while true {
             let depth = Double(d)
             let total = Double(anchor.size)
             guard total > 0, Ring.alpha(depth, scale: scale) >= 0.5 else { break }
-            let ri = Ring.inner(depth), ro = Ring.outer(depth)
+            let ri = Ring.inner(depth)
             var found: [(FileNode, Double, Double)] = []
+            var folded: SmallerGroup?
             var a = a0
-            for child in anchor.children {
+            for (i, child) in anchor.children.enumerated() {
                 let span = (a1 - a0) * Double(child.size) / total
-                if span * ro * vp.k < 2 { break }
+                if Ring.isThin(span: span, depth: depth, k: vp.k) {
+                    if i > 0, Ring.intersects(world, ri, outerEdge, a, a1) { folded = SmallerGroup(parent: anchor, first: i) }
+                    break
+                }
                 if Ring.intersects(world, ri, outerEdge, a, a + span) {
                     found.append((child, a, a + span))
                 }
@@ -422,8 +460,10 @@ final class AppModel {
                 continue
             }
             visible = found.map(\.0)
+            rest = folded
             break
         }
+        if inViewRest != rest { inViewRest = rest }
         if inViewAnchor !== anchor { inViewAnchor = anchor }
         if visible.map(\.id) != inView.map(\.id) { inView = visible }
     }
@@ -433,12 +473,20 @@ final class AppModel {
     func hover(at p: CGPoint?) {
         guard drag == nil, let p else {
             if hovered != nil { hovered = nil }
+            if hoveredSmaller != nil { hoveredSmaller = nil }
             hoveringCenter = false
             return
         }
-        switch hitTest(p) {
+        let hit = hitTest(p)
+        var smaller: SmallerGroup?
+        switch hit {
         case .node(let n):
             if hovered !== n { hovered = n }
+            hoveringCenter = false
+            calloutAnchor = p
+        case .smaller(let group):
+            if hovered != nil { hovered = nil }
+            smaller = group
             hoveringCenter = false
             calloutAnchor = p
         case .center:
@@ -448,6 +496,7 @@ final class AppModel {
             if hovered != nil { hovered = nil }
             hoveringCenter = false
         }
+        if hoveredSmaller != smaller { hoveredSmaller = smaller }
     }
 
     func hoverFromList(_ node: FileNode?) {
@@ -460,8 +509,22 @@ final class AppModel {
         switch hitTest(p) {
         case .center: goUp()
         case .node(let n): open(n, count: count)
+        case .smaller(let group): openSmaller(group, at: p)
         case .none: break
         }
+    }
+
+    /// Bring folded items out: open their folder, or if it's already open, zoom in until the biggest one shows.
+    func openSmaller(_ group: SmallerGroup, at point: CGPoint? = nil) {
+        hoveredSmaller = nil
+        if group.parent !== focus {
+            drill(into: group.parent)
+            return
+        }
+        guard let s = sector(of: group.parent.children[group.first]) else { return }
+        let width = (s.a1 - s.a0) * Ring.inner(max(1, s.depth)) * viewport.k
+        let factor = min(8, max(1.6, Ring.minSlice * 1.5 / max(width, 0.01)))
+        withAnimation(.smooth(duration: 0.5)) { zoom(by: factor, around: point) }
     }
 
     func open(_ node: FileNode, count: Int = 1) {
@@ -477,6 +540,7 @@ final class AppModel {
         focusFrom = current
         focus = node
         hovered = nil
+        hoveredSmaller = nil
         withAnimation(.smooth(duration: 0.7)) {
             focusEpoch += 1
             camera = Camera()
@@ -495,6 +559,7 @@ final class AppModel {
         camera.pan.width = min(limit, max(-limit, camera.pan.width + delta.width))
         camera.pan.height = min(limit, max(-limit, camera.pan.height + delta.height))
         hovered = nil
+        hoveredSmaller = nil
         refreshInView()
     }
 
@@ -506,6 +571,7 @@ final class AppModel {
         camera.pan.width += anchor.x - moved.x
         camera.pan.height += anchor.y - moved.y
         hovered = nil
+        hoveredSmaller = nil
         refreshInView()
     }
 

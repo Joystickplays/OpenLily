@@ -92,6 +92,9 @@ private struct InViewList: View {
                                 removal: .opacity.combined(with: .offset(x: -12))
                             ))
                     }
+                    if let rest = model.inViewRest {
+                        SmallerRow(group: rest)
+                    }
                     if model.inView.isEmpty {
                         Text("Nothing big enough in view. Zoom out a little.")
                             .font(.system(size: 13))
@@ -168,6 +171,48 @@ func binDrag(for node: FileNode, model: AppModel) -> some Gesture {
             }
         }
         .onEnded { _ in model.endDrag() }
+}
+
+/// The sidebar's stand-in for the folded "smaller items" petal.
+private struct SmallerRow: View {
+    @Environment(AppModel.self) private var model
+    let group: SmallerGroup
+
+    var body: some View {
+        let lit = model.hoveredSmaller == group
+        HStack(spacing: 12) {
+            Text("··")
+                .font(.serif(14, .regular, italic: true))
+                .foregroundStyle(Theme.inkSoft)
+                .frame(width: 24, alignment: .leading)
+            PetalShape()
+                .fill(Theme.smaller)
+                .overlay { PetalShape().stroke(Theme.inkSoft.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [2, 2])) }
+                .frame(width: 10, height: 16)
+            Text("\(group.count.formatted()) smaller items")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(Theme.inkSoft)
+            Spacer(minLength: 8)
+            Text(Bytes.string(group.bytes))
+                .font(.serif(17))
+                .monospacedDigit()
+                .foregroundStyle(Theme.inkSoft)
+        }
+        .padding(.horizontal, 6)
+        .frame(height: 44)
+        .background {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Theme.ink.opacity(lit ? 0.06 : 0))
+        }
+        .contentShape(Rectangle())
+        .onHover { h in
+            model.hovered = nil
+            model.hoveredSmaller = h ? group : nil
+            model.calloutAnchor = h ? model.anchorPoint(of: group.parent.children[group.first]) : model.calloutAnchor
+        }
+        .onTapGesture { model.openSmaller(group) }
+        .help("Too thin to draw one by one. Click to bring them out.")
+    }
 }
 
 struct NodeMenu: View {

@@ -44,7 +44,7 @@ enum Theme {
     static let ink = Color.dynamic(light: 0x1F2A24, dark: 0xF4EEE2)
     static let inkSoft = Color.dynamic(light: 0x5B635D, dark: 0xA59D92)
     static let rule = Color.dynamic(light: 0xE6DAD0, dark: 0x2D2721)
-    static let smaller = Color.dynamic(light: 0xE4DAD0, dark: 0x3A322B)
+    static let smaller = Color.dynamic(light: 0xE4DAD0, dark: 0x564C43)
     static let wilt = Color.dynamic(light: 0xD8CFC4, dark: 0x4A4139)
     static let wiltStroke = Color(hex: 0xC2405E)
     static let pollen = Color(hex: 0xE8B23A)
