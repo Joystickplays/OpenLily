@@ -73,6 +73,10 @@ struct SmallerGroup: Equatable {
         bytes = parent.children[first...].reduce(0) { $0 + $1.size }
     }
 
+    var title: String {
+        count == 1 ? "1 smaller item" : "\(count.formatted()) smaller items"
+    }
+
     static func == (a: SmallerGroup, b: SmallerGroup) -> Bool {
         a.parent === b.parent && a.first == b.first
     }
@@ -131,6 +135,8 @@ final class AppModel {
     var hoveredSmaller: SmallerGroup?
     var hoveringCenter = false
     var calloutAnchor: CGPoint?
+    /// Where the header sits on the ring stage, so ring labels can keep clear of it.
+    var headerFrame: CGRect = .zero
 
     // MARK: In view
     var inView: [FileNode] = []

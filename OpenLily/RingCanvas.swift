@@ -58,6 +58,8 @@ struct RenderState {
     let mode: ColorMode
     let search: SearchResult?
     let isVolume: Bool
+    /// Area the outer labels must stay out of (the header), in canvas coordinates.
+    let avoid: CGRect
 }
 
 struct RingCanvas: View, Animatable {
@@ -294,8 +296,13 @@ final class RingRenderer {
             let sx = sin(label.angle), cy = -cos(label.angle)
             let anchorX: Double = sx > 0.3 ? 0 : (sx < -0.3 ? 1 : 0.5)
             let y = cy * lr + (cy > 0.3 ? 10 : (cy < -0.3 ? -12 : 0))
-            let p = vp.screen(CGPoint(x: sx * lr, y: y))
-            let name = Text(label.name).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ink.opacity(label.alpha))
+            var p = vp.screen(CGPoint(x: sx * lr, y: y))
+            let name = ctx.resolve(Text(label.name).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ink.opacity(label.alpha)))
+            let width = name.measure(in: CGSize(width: 1000, height: 40)).width
+            // Slide labels back inside the stage rather than letting them run off its edge.
+            p.x = min(max(p.x, 12 + width * anchorX), vp.size.width - 12 - width * (1 - anchorX))
+            let box = CGRect(x: p.x - width * anchorX, y: p.y - 18, width: width, height: 36)
+            if box.intersects(s.avoid.insetBy(dx: -10, dy: -10)) { continue }
             let size = Text(label.size).font(.mono(12)).foregroundStyle(Theme.inkSoft.opacity(label.alpha))
             ctx.draw(name, at: p, anchor: UnitPoint(x: anchorX, y: 1))
             ctx.draw(size, at: CGPoint(x: p.x, y: p.y + 17), anchor: UnitPoint(x: anchorX, y: 1))

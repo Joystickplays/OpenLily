@@ -39,6 +39,7 @@ struct RingStage: View {
                 .allowsHitTesting(false)
 
             HeaderView()
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("stage")) } action: { model.headerFrame = $0 }
                 .padding(.leading, 48)
                 .padding(.top, 52)
 
@@ -59,6 +60,7 @@ struct RingStage: View {
                 .padding(.bottom, 96)
         }
         .clipped()
+        .coordinateSpace(.named("stage"))
         .onGeometryChange(for: CGSize.self) { $0.size } action: { model.ringSize = $0 }
     }
 
@@ -79,7 +81,8 @@ struct RingStage: View {
             hoveringCenter: model.hoveringCenter,
             mode: model.colorMode,
             search: model.search,
-            isVolume: model.isVolumeScan
+            isVolume: model.isVolumeScan,
+            avoid: model.headerFrame
         )
     }
 
@@ -228,7 +231,7 @@ private struct HoverCallout: View {
         }
         if let group = model.hoveredSmaller {
             let action = group.parent === model.focus ? "Click to zoom in on them." : "Click to open \(group.parent.displayName)."
-            return ("\(group.count.formatted()) smaller items", group.bytes, "Too thin to draw one by one.\n\(action)", Theme.smaller)
+            return (group.title, group.bytes, "Too thin to draw one by one.\n\(action)", Theme.smaller)
         }
         return nil
     }

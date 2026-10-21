@@ -189,7 +189,7 @@ private struct SmallerRow: View {
                 .fill(Theme.smaller)
                 .overlay { PetalShape().stroke(Theme.inkSoft.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [2, 2])) }
                 .frame(width: 10, height: 16)
-            Text("\(group.count.formatted()) smaller items")
+            Text(group.title)
                 .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(Theme.inkSoft)
             Spacer(minLength: 8)
