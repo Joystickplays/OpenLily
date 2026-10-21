@@ -175,10 +175,12 @@ final class AppModel {
 
     init() {
         refreshVolumes()
+        #if DEBUG
         // Dev convenience: OPENLILY_SCAN=/some/path skips the start screen.
         if let path = ProcessInfo.processInfo.environment["OPENLILY_SCAN"] {
             Task { self.scan(URL(fileURLWithPath: path)) }
         }
+        #endif
     }
 
     // MARK: - Volumes
