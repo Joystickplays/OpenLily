@@ -244,13 +244,13 @@
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSDesktopFolderUsageDescription = "OpenLily measures what is on your Desktop so it can show it in the ring.";
 				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "OpenLily measures your Documents so it can show them in the ring.";
 				INFOPLIST_KEY_NSDownloadsFolderUsageDescription = "OpenLily measures your Downloads so it can show them in the ring.";
-				INFOPLIST_KEY_NSRemovableVolumesUsageDescription = "OpenLily measures removable drives you ask it to scan.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSNetworkVolumesUsageDescription = "OpenLily measures network drives you ask it to scan.";
+				INFOPLIST_KEY_NSRemovableVolumesUsageDescription = "OpenLily measures removable drives you ask it to scan.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -279,13 +279,13 @@
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSDesktopFolderUsageDescription = "OpenLily measures what is on your Desktop so it can show it in the ring.";
 				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "OpenLily measures your Documents so it can show them in the ring.";
 				INFOPLIST_KEY_NSDownloadsFolderUsageDescription = "OpenLily measures your Downloads so it can show them in the ring.";
-				INFOPLIST_KEY_NSRemovableVolumesUsageDescription = "OpenLily measures removable drives you ask it to scan.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSNetworkVolumesUsageDescription = "OpenLily measures network drives you ask it to scan.";
+				INFOPLIST_KEY_NSRemovableVolumesUsageDescription = "OpenLily measures removable drives you ask it to scan.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
